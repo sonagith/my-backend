@@ -149,7 +149,7 @@ def get_dashboard_data(db: Session = Depends(get_db), current_user = Depends(get
 
     profile = db.query(models.BusinessProfile).first()
     if not profile:
-        profile = models.BusinessProfile(owner_name="Ramesh", business_name="Mehta Realty Group")
+        profile = models.BusinessProfile(owner_name="Ramesh", business_name="AscentiQ AI Group")
         db.add(profile)
         db.commit()
         db.refresh(profile)
@@ -366,14 +366,20 @@ async def upload_plot_doc(
     unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
     file_path = f"uploads/documents/{unique_filename}"
     
-    with open(file_path, "wb") as buffer: shutil.copyfileobj(file.file, buffer)
-    full_url = f"http://localhost:8000/{file_path}"
+    os.makedirs("uploads/documents", exist_ok=True)
+    
+    with open(file_path, "wb") as buffer: 
+        shutil.copyfileobj(file.file, buffer)
+        
+    # 🔴 CHANGED: Sirf relative path
+    full_url = f"/{file_path}"
+    
     new_doc = models.PlotDocument(plot_id=plot.id, document_name=doc_name, document_url=full_url)
     db.add(new_doc)
     db.commit()
-    log_activity(db, plot_id, "Document Uploaded", f"Uploaded: {doc_name}")
+    
+    # log_activity(db, plot_id, "Document Uploaded", f"Uploaded: {doc_name}")
     return {"status": "success", "message": "Document uploaded successfully", "url": full_url}
-
 
 @router.post("/delete-plot-document")
 def delete_plot_doc(doc_id: int = Form(...), db: Session = Depends(get_db)):
@@ -383,10 +389,9 @@ def delete_plot_doc(doc_id: int = Form(...), db: Session = Depends(get_db)):
         doc_name = doc.document_name
         db.delete(doc)
         db.commit()
-        log_activity(db, plot_id, "Document Removed", f"Deleted: {doc_name}")
+        # log_activity(db, plot_id, "Document Removed", f"Deleted: {doc_name}")
         return {"status": "success", "message": "Document removed"}
     return {"status": "error", "message": "Not found"}
-
 
 # 🔴 5. COMMISSION & STAFF ASSIGNMENT ROUTES (WITH AUDIT) 🔴
 @router.post("/update-commission-info")
@@ -433,6 +438,14 @@ def assign_staff_to_plot(
 
 
 # 🔴 6. KYC UPDATE & UPLOAD ROUTE WITH AUDIT HISTORY 🔴
+import os
+import uuid
+import shutil
+# (Tumhare baaki imports yahan rahenge)
+
+# Live Backend URL
+# BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
+
 UPLOAD_DIR = "uploads/kyc"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -442,12 +455,14 @@ async def save_file(file: UploadFile):
     try:
         file_extension = file.filename.split(".")[-1]
         file_name = f"{uuid.uuid4()}.{file_extension}"
-        file_path = os.path.join(UPLOAD_DIR, file_name)
+        # Ensure forward slashes for URLs
+        file_path = f"uploads/kyc/{file_name}"
         
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        return f"http://localhost:8000/uploads/kyc/{file_name}"
+        # 🔴 CHANGED: Return relative path
+        return f"/{file_path}"
     except Exception as e:
         return None
 
@@ -489,10 +504,51 @@ async def update_kyc_info(
         if national_id_url: buyer.national_id_doc_url = national_id_url
 
         db.commit()
-        log_activity(db, plot_id, "KYC Updated", f"Client ({buyer.name}) KYC details/documents were updated.")
+        # log_activity(db, plot_id, "KYC Updated", f"Client ({buyer.name}) KYC details/documents were updated.")
 
         return {"status": "success", "message": "KYC details updated successfully"}
     
     except Exception as e:
         db.rollback()
         return {"status": "error", "message": str(e)}
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from db import models, schemas
+from api.deps import get_db
+
+# GET API: Ek client/plot ke saare notes dekhne ke liye
+@router.get("/notes/{plot_id}")
+async def get_plot_notes(plot_id: int, db: Session = Depends(get_db)):
+    notes = db.query(models.PlotNote).filter(models.PlotNote.plot_id == plot_id).order_by(models.PlotNote.created_at.desc()).all()
+    return {"status": "success", "notes": notes}
+
+# POST API: Naya note add karne ke liye
+@router.post("/add-note")
+async def add_plot_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
+    # Pehle check karo plot exist karta hai ya nahi
+    plot = db.query(models.Plot).filter(models.Plot.id == note.plot_id).first()
+    if not plot:
+        raise HTTPException(status_code=404, detail="Plot/Client not found")
+        
+    new_note = models.PlotNote(
+        plot_id=note.plot_id,
+        note_text=note.note_text
+    )
+    db.add(new_note)
+    db.commit()
+    db.refresh(new_note)
+    
+    return {"status": "success", "message": "Note added successfully!", "note": new_note}
+
+# PUT API: Purane note ko update karne ke liye
+@router.put("/update-note/{note_id}")
+async def update_plot_note(note_id: int, note_data: schemas.NoteUpdate, db: Session = Depends(get_db)):
+    existing_note = db.query(models.PlotNote).filter(models.PlotNote.id == note_id).first()
+    if not existing_note:
+        raise HTTPException(status_code=404, detail="Note not found")
+        
+    existing_note.note_text = note_data.note_text
+    db.commit()
+    
+    return {"status": "success", "message": "Note updated successfully!"}

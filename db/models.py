@@ -159,20 +159,26 @@ class Integration(Base):
     icon = Column(String)
     is_connected = Column(Integer, default=0)
 
+
+
 class BusinessProfile(Base):
     __tablename__ = "business_profiles"
+    
     id = Column(Integer, primary_key=True, index=True)
-    owner_name = Column(String, default="Ramesh Mehta")
-    business_name = Column(String, default="Mehta Realty Group")
-    phone_number = Column(String, default="+91 98765 43210")
-    industry = Column(String, default="Real Estate — Plot Development")
-    gstin = Column(String, default="")
-    pan = Column(String, default="")
-    city = Column(String, default="Kochi")
-    state = Column(String, default="Kerala")
-    pin_code = Column(String, default="682001")
-    rera_no = Column(String, default="")
-
+    
+    # Mandatory Fields (default empty string rakh sakte ho)
+    business_name = Column(String, default="Mehta Realty Group1", nullable=False)
+    owner_name = Column(String, default="Ramesh Mehta", nullable=False)
+    phone_number = Column(String, default="+91 98765 43210", nullable=False)
+    pan = Column(String, default="", nullable=False)
+    state = Column(String, default="Kerala", nullable=False)
+    city = Column(String, default="Kochi", nullable=False)
+    pin_code = Column(String, default="682001", nullable=False)
+    
+    # Non-Mandatory Fields
+    industry = Column(String, default="", nullable=True)
+    gstin = Column(String, default="", nullable=True)
+    rera_no = Column(String, default="", nullable=True)
     logo_url = Column(String, nullable=True)
 
 class Staff(Base):
@@ -214,3 +220,15 @@ class PlaceholderRef(Base):
     ph_key = Column(String, unique=True, index=True)
     description = Column(String)
     sample_value = Column(String)
+
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from datetime import datetime
+# (Baaki purane imports waise hi rahenge)
+
+class PlotNote(Base):
+    __tablename__ = "plot_notes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    plot_id = Column(Integer, ForeignKey("plots.id"), index=True) # Client/Plot se link karne ke liye
+    note_text = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -1,9 +1,12 @@
 # Backend/api/routes/settings.py
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, UploadFile, File
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from db import models
-
+import shutil
+import os
+from core.automation import run_daily_reminders
+from typing import Optional
 router = APIRouter()
 
 @router.get("/get-all")
@@ -37,22 +40,36 @@ def get_all_settings(db: Session = Depends(get_db)):
 
 @router.post("/update-profile")
 def update_profile(
-    business_name: str = Form(...), owner_name: str = Form(...), phone_number: str = Form(...),
-    industry: str = Form(...), gstin: str = Form(...), pan: str = Form(...),
-    city: str = Form(...), state: str = Form(...), pin_code: str = Form(...), rera_no: str = Form(...),
+    business_name: str = Form(...), 
+    owner_name: str = Form(...), 
+    phone_number: str = Form(...),
+    pan: str = Form(...),            # Mandatory
+    city: str = Form(...),           # Mandatory
+    state: str = Form(...),          # Mandatory
+    pin_code: str = Form(...),       # Mandatory
+    industry: Optional[str] = Form(None), # Non-Mandatory
+    gstin: Optional[str] = Form(None),    # Non-Mandatory
+    rera_no: Optional[str] = Form(None),  # Non-Mandatory
     db: Session = Depends(get_db)
 ):
     profile = db.query(models.BusinessProfile).first()
+    if not profile:
+        profile = models.BusinessProfile()
+        db.add(profile)
+        
     profile.business_name = business_name
     profile.owner_name = owner_name
     profile.phone_number = phone_number
-    profile.industry = industry
-    profile.gstin = gstin
     profile.pan = pan
     profile.city = city
     profile.state = state
     profile.pin_code = pin_code
-    profile.rera_no = rera_no
+    
+    # Agar None aaya toh usko empty string ("") save karenge DB me
+    profile.industry = industry or ""
+    profile.gstin = gstin or ""
+    profile.rera_no = rera_no or ""
+    
     db.commit()
     return {"status": "success"}
 
@@ -93,7 +110,6 @@ def get_templates(db: Session = Depends(get_db)):
         db.commit()
         templates = db.query(models.MessageTemplate).all()
 
-    # Database se placeholders fetch karke correct mapping bhej rahe hain
     placeholders_db = db.query(models.PlaceholderRef).all()
     phs = [
         {
@@ -134,40 +150,23 @@ def add_placeholder(ph_key: str = Form(...), description: str = Form(...), sampl
     db.commit()
     return {"status": "success"}
 
-
-# Backend/api/routes/settings.py ke end mein:
-from core.automation import run_daily_reminders
-
 @router.post("/trigger-automation-test")
 def test_automation():
     """Sirf testing ke liye. Manual trigger background cron job."""
     run_daily_reminders()
     return {"status": "success", "message": "Automation job triggered! Check backend console."}
 
-
-from fastapi import APIRouter, Depends, Form, UploadFile, File
-from sqlalchemy.orm import Session
-from api.deps import get_db
-from db import models
-import shutil
-import os
-
-# ... aapka baaki ka code ...
-
-# 🔴 NAYI API - LOGO UPLOAD KARNE KE LIYE 🔴
 @router.post("/upload-logo")
 def upload_logo(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    # 1. Folder create karein agar nahi hai toh
     os.makedirs("uploads/logos", exist_ok=True)
     
-    # 2. File ko save karein
     file_path = f"uploads/logos/{file.filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # 3. Database mein URL update karein
     profile = db.query(models.BusinessProfile).first()
     if profile:
+        # 🔴 CHANGED: Sirf relative path save karenge
         profile.logo_url = f"/{file_path}"
         db.commit()
         

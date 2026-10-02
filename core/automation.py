@@ -94,7 +94,7 @@ def format_message(template_body: str, plot: models.Plot, profile: models.Busine
         "{{dueDate}}": plot.due_date.strftime("%d %b %Y") if plot.due_date else "—",
         "{{outstandingBalance}}": f"₹{plot.total_due_balance:,.0f}",
         "{{vendorName}}": profile.business_name if profile else "Our Company",
-        "{{paymentLink}}": f"https://pay.gharpilot.in/pay/{plot.id}",
+        "{{paymentLink}}": f"https://pay.intopilot.in/pay/{plot.id}",
         "{{staffName}}": staff.name if staff else "Support Team",
         "{{staffPhone}}": staff.phone if staff else "—"
     }

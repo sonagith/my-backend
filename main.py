@@ -150,17 +150,17 @@ def startup_seed_db():
         print("🛡️ All Tables Safely Verified & Migrated!")
 
         # 2. Default Admin User
-        user = db.query(models.User).filter(models.User.email == "aosaf@greenvalleygroup.com").first()
+        user = db.query(models.User).filter(models.User.email == "atishay@ascentiqai.com").first()
         if not user:
-            hashed_pw = get_password_hash("aosaf@123")
-            new_user = models.User(email="aosaf@greenvalleygroup.com", hashed_password=hashed_pw)
+            hashed_pw = get_password_hash("atishay@123")
+            new_user = models.User(email="atishay@ascentiqai.com", hashed_password=hashed_pw)
             db.add(new_user)
             db.commit()
 
         # 3. Default Profile
         profile = db.query(models.BusinessProfile).first()
         if not profile:
-            profile = models.BusinessProfile(owner_name="Ramesh Mehta", business_name="Mehta Realty Group")
+            profile = models.BusinessProfile(owner_name="Ramesh Mehta", business_name="AscentiQ AI Group")
             db.add(profile)
             db.commit()
 
@@ -215,8 +215,8 @@ def startup_seed_db():
                 {"ph_key": "installmentAmount", "description": "Installment Amount", "sample_value": "₹1,50,000"},
                 {"ph_key": "dueDate", "description": "Due Date", "sample_value": "15 Jul 2026"},
                 {"ph_key": "outstandingBalance", "description": "Outstanding Balance", "sample_value": "₹75,000"},
-                {"ph_key": "vendorName", "description": "Business Name", "sample_value": "Mehta Realty Group"},
-                {"ph_key": "paymentLink", "description": "Payment Link", "sample_value": "https://pay.gharpilot.in/rc-00001"},
+                {"ph_key": "vendorName", "description": "Business Name", "sample_value": "AscentiQ AI Group"},
+                {"ph_key": "paymentLink", "description": "Payment Link", "sample_value": "https://pay.intopilot.in/rc-00001"},
                 {"ph_key": "staffName", "description": "Assigned Staff Name", "sample_value": "Anil Kumar Nair"},
                 {"ph_key": "staffPhone", "description": "Assigned Staff Phone", "sample_value": "+91 98470 11223"}
             ]

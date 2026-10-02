@@ -1,4 +1,3 @@
-# Backend/api/routes/payments.py
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from api.deps import get_db, get_current_user
@@ -22,19 +21,23 @@ async def add_payment(
     received_date: date = Form(...),
     booked_by: str = Form(None),
     remark: str = Form(None),
-    receipt_image: UploadFile = File(None), # 🔴 IMAGE FILE 🔴
+    receipt_image: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     file_url = None
     if receipt_image and receipt_image.filename:
-        # File save karna
         ext = receipt_image.filename.split('.')[-1]
         filename = f"{uuid.uuid4()}.{ext}"
         filepath = f"uploads/receipts/{filename}"
+        
+        os.makedirs("uploads/receipts", exist_ok=True)
+        
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(receipt_image.file, buffer)
-        file_url = f"http://localhost:8000/uploads/receipts/{filename}" # Frontend URL
+            
+        # 🔴 CHANGED: Sirf relative path
+        file_url = f"/{filepath}" 
 
     new_payment = models.Payment(
         plot_id=plot_id,
@@ -44,7 +47,7 @@ async def add_payment(
         cheque_no=cheque_no,
         ch_date=cheque_date,
         remarks=remark,
-        receipt_url=file_url # Save in DB
+        receipt_url=file_url 
     )
     db.add(new_payment)
     db.commit()
